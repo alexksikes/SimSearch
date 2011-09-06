@@ -1,0 +1,15 @@
+[ ] implement other feature types besides bag of words. 
+
+[ ] for bag of words features:
+- mulitple features in one table
+- same feature value for different features.
+- normalize the feature values.
+
+[ ] SSCursor is better to fetch lots of rows but still has problems:
+  http://stackoverflow.com/questions/337479/how-to-get-a-row-by-row-mysql-resultset-in-python
+
+[*] ad feature value information right into the index (ComputedIndex.index_to_feat)
+
+[ ] return only a restricted set of ids
+[ ] to speed things, we could actually only perform the matrix multiplication on he reamining ids 
+  (either by looping over each item or by manipulating the matrix)
