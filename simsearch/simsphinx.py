@@ -24,6 +24,12 @@ class SimSphinxWrap(sphinxapi.SphinxClient):
         self.sphinx_setup = sphinx_setup
         self._max_items = max_items
         
+        if hasattr(self.wrap_cl, 'query_parser'): 
+            user_sph_map = self.wrap_cl.query_parser.user_sph_map 
+        else:
+            user_sph_map = {}
+        self.query_parser = QuerySimilar(user_sph_map) 
+        
     def __getattr__(self, name):
         return getattr(self.wrap_cl, name)
     
@@ -46,12 +52,10 @@ class SimSphinxWrap(sphinxapi.SphinxClient):
     def Query(self, query):
         """If the query has item ids perform a similarity search query otherwise
         perform a normal sphinx query.
-        
-        The query must be a QuerySimilar object.
         """
-        # parse the query which is assumed to be a QuerySimilar
-        self.ParseQuery(query)
-        item_ids = self.query.GetItemIds()
+        # parse the query which is assumed to be a string
+        self.query_parser.Parse(query)
+        item_ids = self.query_parser.GetItemIds()
         
         if item_ids:
             # perform similarity search on the set of query items
@@ -60,20 +64,12 @@ class SimSphinxWrap(sphinxapi.SphinxClient):
             self._SetupSphinxClient(item_ids, dict(results.log_scores))
         
         # perform the Sphinx query
-        hits = self.DoSphinxQuery(self.query)
+        hits = self.DoSphinxQuery(self.query_parser)
             
         if item_ids:
             # add the statistics to the matches
             self._AddStats(hits, results)
             
-    def ParseQuery(self, query):
-        if hasattr(self.wrap_cl, 'query_parser'):
-            user_sph_map = self.wrap_cl.query_parser.user_sph_map
-        else:
-            user_sph_map = {}
-        self.query = QuerySimilar(user_sph_map)
-        self.query.Parse(query)
-        
     def DoSimQuery(self, item_ids):
         """Performs the actual simlarity search query.
         """
@@ -99,7 +95,7 @@ class SimSphinxWrap(sphinxapi.SphinxClient):
         
         # only hits with non zero log scores are considered if the query is empty
         QuerySimilar.ALLOW_EMPTY = True
-        if not self.query.sphinx:
+        if not self.query_parser.sphinx:
             self.wrap_cl.SetFilterFloatRange('log_score_attr', 0.0, 1.0, exclude=True)
         
     def _AddStats(self, sphinx_results, sim_results):
