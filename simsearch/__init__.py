@@ -13,6 +13,7 @@ __version__ = '0.2'
 __author__ = 'Alex Ksikes <alex.ksikes@gmail.com>'
 __license__ = 'GPL'
 
+import bsets
 from bsets import *
 from simsphinx import *
 import utils

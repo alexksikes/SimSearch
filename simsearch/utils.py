@@ -6,11 +6,11 @@ import random
 import cPickle as pickle
 
 def time_func(func):
+    setattr(func, 'time_taken', 0)
     def new(*args, **kw):
         start = time.time()
         res = func(*args, **kw)
         timed = time.time() - start
-        
         setattr(new, 'time_taken', timed)
         return res
     return new

@@ -1,6 +1,6 @@
 """This is module is an implementation of Bayesian Sets."""
 
-__all__ = ['Indexer', 'ComputedIndex', 'QueryHandler']
+__all__ = ['Indexer', 'ComputedIndex', 'QueryHandler', 'load_index']
 
 from scipy import sparse
 from MySQLdb import cursors
@@ -193,9 +193,6 @@ class QueryHandler(object):
     def query(self, item_ids, max_results=100):
         """Query the given computed against the item ids.
         """
-        self.item_ids = item_ids
-        self._item_ids = [id for id in item_ids if id in self.item_id_to_index]
-        
         # check the query is valid
         if not self.is_valid_query(item_ids):
             return self.empty_results
@@ -217,7 +214,29 @@ class QueryHandler(object):
         
         return self.results
     
+    def get_detailed_scores(self, query_item_ids, result_ids, max_terms=20):
+        # if the query vector was not computed, we need to recompute it!
+        if not hasattr(self, 'q'):
+            if not self.is_valid_query(query_item_ids):
+                return None
+            else:
+                logging.info('Computing the query vector ...')
+                self._make_query_vector()
+                logging.info('%.2f sec.', self._make_query_vector.time_taken)
+                self.time_taken += self._make_query_vector.time_taken 
+                
+        # computing deatailed scores for the chosen items
+        logging.info('Computing detailed scores ...')
+        scores = self._compute_detailed_scores(result_ids, max_terms)
+        logging.info('%.2f sec.', self._compute_detailed_scores.time_taken)
+        
+        self.time_taken += self._compute_detailed_scores.time_taken
+        return utils._O(scores=scores, time=self.time_taken)
+
+    @utils.time_func
     def is_valid_query(self, item_ids):
+        self.item_ids = item_ids
+        self._item_ids = [id for id in item_ids if id in self.item_id_to_index]
         return self._item_ids != []
     
     @utils.time_func
@@ -250,7 +269,39 @@ class QueryHandler(object):
         else:
             self.ordered_indexes = utils.argsort_best(self.log_scores, max_results, reverse=True)
             logging.info('Got %s indexes ...', len(self.ordered_indexes))
+
+    @utils.time_func  
+    def _compute_detailed_scores(self, item_ids, max_terms=20):
+        """Returns detailed statistics about the matched items.
+        """
+        scores = []
+        for id in item_ids:
+            if id not in self.item_id_to_index:
+                scores.append(dict(total_score=0, scores=[]))
+                continue
             
+            xi = self.X[self.item_id_to_index[id]]
+            xi_ind = xi.indices
+            
+            feat = (self.index_to_feat[i] for i in xi_ind)
+            
+            qi = self.q.transpose()[xi_ind]
+            qi = numpy.asarray(qi).flatten()
+            
+            sc = sorted(zip(feat, qi), key=lambda x: (x[1], x[0]), reverse=True)
+            total_score = qi.sum()
+            
+            scores.append(dict(total_score=total_score, scores=sc[0:max_terms]))
+        return scores
+    
+    def _update_time_taken(self, reset=False):
+        self.time_taken = (
+            + getattr(self._make_query_vector, 'time_taken', 0)
+            + getattr(self._compute_scores, 'time_taken', 0)
+            + getattr(self._order_indexes_by_scores, 'time_taken', 0)
+            + getattr(self._compute_detailed_scores, 'time_taken', 0)
+        )
+        
     @property
     def results(self):
         """Returns the results as a ResultSet object.
@@ -274,42 +325,6 @@ class QueryHandler(object):
     @property
     def empty_results(self):
         return ResultSet.get_empty_result_set(query_item_ids=self.item_ids, _query_item_ids=self._item_ids)
-        
-    def _update_time_taken(self):
-        self.time_taken = (
-            + self._make_query_vector.time_taken
-            + self._compute_scores.time_taken
-            + self._order_indexes_by_scores.time_taken
-        )
-    
-    @utils.time_func  
-    def get_detailed_scores(self, item_ids, max_terms=20):
-        """Returns detailed statistics about the matched items.
-        """
-        # if the query vector was not computed, we need to recompute it!
-        if not hasattr(self, 'q'):
-            self._item_ids = [id for id in item_ids if id in self.item_id_to_index]
-            self._make_query_vector()
-        
-        scores = []
-        for id in item_ids:
-            if id not in self.item_id_to_index:
-                scores.append(dict(total_score=0, scores=[]))
-                continue
-            
-            xi = self.X[self.item_id_to_index[id]]
-            xi_ind = xi.indices
-            
-            feat = (self.index_to_feat[i] for i in xi_ind)
-            
-            qi = self.q.transpose()[xi_ind]
-            qi = numpy.asarray(qi).flatten()
-            
-            sc = sorted(zip(feat, qi), key=lambda x: (x[1], x[0]), reverse=True)
-            total_score = qi.sum()
-            
-            scores.append(dict(total_score=total_score, scores=sc[0:max_terms]))
-        return scores
             
 class ResultSet(utils.Serializable):
     """This class represents the results returned by a query handler.
@@ -350,6 +365,13 @@ def load_index(index_path, once=None):
     """Loads a pickled computed index into a ComputedIndex object.
     """
     if once and len(once):
+        return once
+    return ComputedIndex.load(index_path)
+
+def load_index_to(index_path, to):
+    """Loads a pickled computed index into a ComputedIndex object.
+    """
+    if n and len(once):
         return once
     return ComputedIndex.load(index_path)
 
