@@ -1,15 +1,24 @@
-[ ] implement other feature types besides bag of words. 
+[*] separate feature creation from computed index
+
+[ ] incremental indexing
+ - use mode 'append' but the index needs to be recomputed
+
+[ ] distributed computation of the sparse multiplication
+ - use multi-processing module
+ - have workers compute a chuck of the matrix (a sequential list of items)
+ - merge sort each worker result
+ - accross machines (not just cores), we need distributed indexes as well
+
+[ ] implement other feature types besides bag of words
+- some basic image features (color histogram)
 
 [ ] for bag of words features:
-- mulitple features in one table
-- same feature value for different features.
-- normalize the feature values.
+- multiple features in one table
+- normalize the feature values
+- database agnostic
 
 [ ] SSCursor is better to fetch lots of rows but still has problems:
   http://stackoverflow.com/questions/337479/how-to-get-a-row-by-row-mysql-resultset-in-python
 
-[*] ad feature value information right into the index (ComputedIndex.index_to_feat)
-
-[ ] return only a restricted set of ids
-[ ] to speed things, we could actually only perform the matrix multiplication on he reamining ids 
+[ ] to speed things, we could actually only perform the matrix multiplication on the reamining ids
   (either by looping over each item or by manipulating the matrix)

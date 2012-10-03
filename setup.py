@@ -3,12 +3,12 @@
 from distutils.core import setup
 
 long_description = '''
-Implementation of Bayesian Sets for fast similarity searches.
+Item based retrieval engine with Bayesian Sets.
 '''
 
 setup(name='SimSearch',
-    version='0.2',
-    description='Implementation of Bayesian Sets for fast similarity searches',
+    version='0.5',
+    description='Item based retrieval engine with Bayesian Sets',
     author='Alex Ksikes',
     author_email='alex.ksikes@gmail.com',
     url='https://github.com/alexksikes/SimSearch',
