@@ -180,9 +180,9 @@ Note that the "indexer.conf" must have an attribute called "log_scores_attr" set
 We are now ready to combine full text search with item based search.
 
     # creating a sphinx client to handle full text search
-    cl = simsearch.SimClient(handler)
+    cl = simsearch.SimClient(fsphinx.FSphinxClient(), handler, max_terms=5)
 
-A SimClient really is an FSphincClient which itself is a SphinxClient.
+A SimClient wraps any SphinxClient to provide it with similarity search ability.
 
     # assuming searchd is running on 9315
     cl.SetServer('localhost', 9315)

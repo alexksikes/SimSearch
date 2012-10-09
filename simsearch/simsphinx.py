@@ -2,114 +2,142 @@
 
 __all__ = ['SimClient', 'QuerySimilar', 'QueryTermSimilar']
 
-import utils
+# TODO:
+# - we need to check caching again
+# - see if some things can be simplified
+# - printing the results ...
+# - review tutorial
+
 import re
-import copy
+import sys
+import os
 import sphinxapi
 
-from fsphinx import *
+from fsphinx import queries, MultiFieldQuery, QueryTerm
+from fsphinx import QueryParser, FSphinxClient, CacheIO
+import bsets
+import utils
 
-class SimClient(FSphinxClient):
+class SimClient(object):
     """Creates a wrapped sphinx client together with a computed index.
-
-    The computed index is queried if a similarity search query is encountered.
     
-    The log_score of each item is found in the Sphinx attribute "log_score_attr".
+    The computed index is queried if a similary search query is encoutered.
+    In this case the the function sphinx_setup is called in order to reset 
+    the wrapped sphinx client.
+    
+    The log_score of each item is found in the Sphinx attribute "log_score_attr". 
     It must be set to 1 and declared as a float in your Sphinx configuration file.
     """
-    def __init__(self, query_handler=None, cl=None, **opts):
-        FSphinxClient.__init__(self)
-        # default query parser
-        self.AttachQueryParser(QueryParser(QuerySimilar))
-        # set the query handler for simsearch
-        self.SetQueryHandler(query_handler)
-        # default sorting function
-        self.SetSortMode(sphinxapi.SPH_SORT_EXPR, 'log_score_attr')
-        # initiate from an existing client
-        if cl:
-            self.SetSphinxClient(cl)
-        # some default options
-        self._max_items = opts.get('max_items', 1000)
-        self._max_terms = opts.get('max_terms', 20)
-        self._exclude_queried = opts.get('exclude_queried', True)
-        self._allow_empty = opts.get('allow_empty', True)
-        if self._allow_empty:
+    def __init__(self, cl=None, query_handler=None, sphinx_setup=None, **opts):
+        # essential options
+        self.Wrap(cl)
+        if opts.get('index_path'):
+            self.LoadIndex(opts['index_path'])
+        else:
+            self.query_handler = query_handler
+        self.SetSphinxSetup(sphinx_setup)
+        # other options
+        self.max_items = opts.get('max_items', 1000)
+        self.max_terms = opts.get('max_terms', 20)
+        self.exclude_queried = opts.get('exclude_queried', True)
+        self.allow_empty = opts.get('allow_empty', True)
+        if self.allow_empty:
             QuerySimilar.ALLOW_EMPTY = True
         
-    def SetSphinxClient(self, cl):
+    def __getattr__(self, name):
+        return getattr(self.wrap_cl, name)
+
+    def Wrap(self, cl):
         """Use this method to wrap the sphinx client.
         """
-        # prototype pattern, create based on existing instance
-        self.__dict__.update(copy.deepcopy(cl).__dict__)
-        if hasattr(cl, 'query_parser'):
-            if hasattr(cl.query_parser, 'user_sph_map'):
-                self.query_parser = QueryParser(
-                    QuerySimilar, user_sph_map=cl.user_sph_map)
-                
-    def SetQueryHandler(self, query_handler):
-        """Sets the query handler to perform the similarity search.
+        self.wrap_cl = cl
+        if getattr(cl, 'query_parser', None):
+            user_sph_map = cl.query_parser.kwargs.get('user_sph_map', {})
+        else:
+            user_sph_map = {}
+        self.query_parser = QueryParser(QuerySimilar, user_sph_map=user_sph_map)
+        return self
+        
+    def LoadIndex(self, index_path):
+        """Load the similarity search index in memory.
         """
-        self.query_handler = query_handler
-
-    def Query(self, query, index='', comment=''):
+        idx = bsets.load_index(index_path)
+        self.query_handler = bsets.QueryHandler(idx)    
+        
+    def SetSphinxSetup(self, setup):
+        """Set the setup function which will be triggered in similarity search 
+        on the sphinx client.
+        
+        This function takes a sphinx client and operates on it in order to
+        change sorting mode or ranking etc ... 
+        
+        The Sphinx attribute "log_score_attr" holds each item log score.
+        """
+        self.sphinx_setup = setup
+    
+    def Query(self, query):
         """If the query has item ids perform a similarity search query otherwise
         perform a normal sphinx query.
         """
-        # first let's parse the query if possible
-        if isinstance(query, basestring):
-            query = self.query_parser.Parse(query)
-        self.query = query
+        # parse the query which is assumed to be a string
+        self.query = self.query_parser.Parse(query)
         
-        # now let's get the item ids
         item_ids = self.query.GetItemIds()
         if item_ids:
             # perform similarity search on the set of query items
-            log_scores = self.DoSimQuery(item_ids)
+            results = self.DoSimQuery(item_ids)
             # setup the sphinx client with log scores
-            self._SetupSphinxClient(item_ids, dict(log_scores))
+            self._SetupSphinxClient(item_ids, dict(results.log_scores))
         
-        # perform the normal Sphinx query
-        hits = FSphinxClient.Query(self, query, index, comment)
-        
-        # reset filters for subsequent queries
-        self.ResetOverrides()
-        self.ResetFilters()
-        
-        # add detailed scoring information to each match
-        self._AddStats(item_ids)
-
-        # keep expected return of SphinxClient
-        return self.hits
-
+        # perform the Sphinx query
+        hits = self.DoSphinxQuery(self.query)
+            
+        if item_ids:
+            # add the statistics to the matches
+            self._AddStats(hits, results)
+            
+        return hits
+            
     @CacheIO
     def DoSimQuery(self, item_ids):
-        """Performs the actual similarity search query.
+        """Performs the actual simlarity search query.
         """
-        results = self.query_handler.query(item_ids, self._max_items)
-        return results.log_scores
+        return self.query_handler.query(item_ids, self.max_items)
+    
+    def DoSphinxQuery(self, query):
+        """Peforms a normal sphinx query.
+        """
+        if isinstance(self.wrap_cl, FSphinxClient):
+            return self.wrap_cl.Query(query)
+        else:
+            # check we don't loose the parsed query
+            return self.wrap_cl.Query(query.sphinx)
         
     def _SetupSphinxClient(self, item_ids, log_scores):
-        # override the log_score_attr attributes with its value
-        self.SetOverride('log_score_attr', sphinxapi.SPH_ATTR_FLOAT, log_scores)
-        # exclude query item ids from results
-        if self._exclude_queried:
-            self.SetFilter('@id', item_ids, exclude=True)
-        # allow full scan on empty query but restrict to non zero log scores
-        if not self.query.sphinx and self._allow_empty:
-            self.SetFilterFloatRange('log_score_attr', 0.0, 1.0, exclude=True)
-
-    def _AddStats(self, query_item_ids):
-        scores = []
-        ids = [match['id'] for match in self.hits['matches']]
-        if ids:
-            scores = self._GetDetailedScores(ids, query_item_ids)
-        for scores, match in zip(scores, self.hits['matches']):
-            match['attrs']['@sim_scores'] = scores.scores
-        self.hits['time_similarity'] = self.query_handler.time
+        # if the setup is in a configuration file
+        if self.sphinx_setup:
+            self.sphinx_setup(self.wrap_cl)
         
+        # override log_score_attr and exclude selected ids
+        self.wrap_cl.SetOverride('log_score_attr', sphinxapi.SPH_ATTR_FLOAT, log_scores)
+        if self.exclude_queried:
+            self.wrap_cl.SetFilter('@id', item_ids, exclude=True)
+        
+        # only hits with non zero log scores are considered if the query is empty
+        if not self.query.sphinx and self.allow_empty:
+            self.wrap_cl.SetFilterFloatRange('log_score_attr', 0.0, 1.0, exclude=True)
+        
+    def _AddStats(self, sphinx_results, sim_results):
+        # add detailed scoring information
+        scores = self._GetDetailedScores(sphinx_results['ids'])
+        for scores, match in zip(scores, sphinx_results['matches']):
+            match['attrs']['@sim_scores'] = scores
+        # and other statitics
+        sphinx_results['time_similarity'] = sim_results.time
+    
     @CacheIO
-    def _GetDetailedScores(self, ids, query_item_ids):
-        return self.query_handler.get_detailed_scores(ids, query_item_ids, max_terms=self._max_terms)
+    def _GetDetailedScores(self, ids):
+        return self.query_handler.get_detailed_scores(ids, max_terms=self.max_terms)
         
     def Clone(self, memo={}):
         """Creates a copy of this client.
@@ -124,11 +152,22 @@ class SimClient(FSphinxClient):
             [a for a in self.__dict__ if a not in ['query_handler']])
         utils.load_attrs(cl, attrs)
         if self.query_handler:
-            computed_index = self.query_handler.computed_index
-            cl.SetQueryHandler(QueryHandler(computed_index))
+            cl.query_handler = bsets.QueryHandler(self.query_handler.computed_index)
         return cl
 
-
+    @classmethod
+    def FromConfig(cls, path):
+        """Creates a client from a config file.
+        """
+        # if path is a module
+        if hasattr(path, '__file__'):
+            path = os.path.splitext(path.__file__)[0] + '.py'
+        
+        for d in utils.get_all_sub_dirs(path)[::-1]:
+            sys.path.insert(0, d)
+        cf = {'sys':sys}; execfile(path, cf, cf)
+        return SimClient(**cf)
+        
 class QueryTermSimilar(QueryTerm):
     """This is like an fSphinx multi-field query but with the representation of
     a query for similar items.

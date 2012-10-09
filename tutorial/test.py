@@ -51,7 +51,7 @@ import fsphinx
 import sphinxapi
 
 # creating a sphinx client to handle full text search
-cl = simsearch.SimClient(handler, max_terms=5)
+cl = simsearch.SimClient(fsphinx.FSphinxClient(), handler, max_terms=5)
 
 # assuming searchd is running on 9315
 cl.SetServer('localhost', 9315)
