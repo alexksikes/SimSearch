@@ -160,13 +160,13 @@ First you need to install [Sphinx][2] and [fSphinx][3].
 
 After you have installed Sphinx, let it index data (assuming Sphinx indexer is in /user/local/sphinx/):
 
-    /usr/local/sphinx/bin/indexer -c ./config/indexer.conf --all
+    /usr/local/sphinx/bin/indexer -c ./config/sphinx_indexer.conf --all
     
 And now let searchd serve the index:
 
-    /usr/local/sphinx/bin/searchd -c ./config/indexer.conf
+    /usr/local/sphinx/bin/searchd -c ./config/sphinx_indexer.conf
  
-Note that the "indexer.conf" must have an attribute called "log_scores_attr" set to 1 and declared as a float.
+Note that the "sphinx_indexer.conf" must have an attribute called "log_scores_attr" set to 1 and declared as a float.
 
     # log_score_attr must be set to 1
     sql_query            = \

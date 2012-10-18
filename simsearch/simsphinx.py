@@ -132,7 +132,7 @@ class SimClient(object):
             self.sphinx_setup(self.wrap_cl)
         
     def _AddStats(self, sphinx_results, item_ids):
-        scores = self._GetDetailedScores(sphinx_results['ids'], item_ids)
+        scores = self._GetDetailedScores([match['id'] for match in sphinx_results['matches']], item_ids)
         for scores, match in zip(scores, sphinx_results['matches']):
             match['attrs']['@sim_scores'] = scores
     
