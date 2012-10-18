@@ -53,8 +53,8 @@ import sphinxapi
 # creating a sphinx client to handle full text search
 cl = simsearch.SimClient(fsphinx.FSphinxClient(), handler, max_terms=5)
 
-# assuming searchd is running on 9315
-cl.SetServer('localhost', 9315)
+# assuming searchd is running on 10001
+cl.SetServer('localhost', 10001)
 
 # telling fsphinx how to fetch the results
 db = fsphinx.utils.database(dbn='mysql', **db_params)

@@ -29,7 +29,7 @@ class ComputedIndex(utils.Serializable):
         self._compute_hyper_parameters()
         index.close()
             
-    @utils.show_time_taken
+    #@utils.show_time_taken
     def _load_file_index(self, index_path):
         logger.info("Loading file index ...")
         return indexer.FileIndex(index_path, mode='read')
@@ -68,7 +68,7 @@ class QueryHandler(object):
         utils.auto_assign(self, vars(computed_index))
         self.computed_index = computed_index
         self.time = 0
-
+        
     def query(self, item_ids, max_results=100):
         """Queries the given computed against the given item ids.
         """
@@ -179,14 +179,14 @@ class QueryHandler(object):
 
         return scores
 
-    def _update_time_taken(self, reset=False):
+    def _update_time_taken(self):
         self.time = (
-            + getattr(self._make_query_vector, 'time_taken', 0)
-            + getattr(self._compute_scores, 'time_taken', 0)
-            + getattr(self._order_indexes_by_scores, 'time_taken', 0)
-            + getattr(self._compute_detailed_scores, 'time_taken', 0)
+            + getattr(self,'_time_taken__make_query_vector', 0)
+            + getattr(self,'_time_taken__compute_scores', 0)
+            + getattr(self,'_time_taken__order_indexes_by_scores', 0)
+            + getattr(self,'_time_taken__compute_detailed_scores', 0)
         )
-
+        
     @property
     def results(self):
         """Returns the results as a ResultSet object.
@@ -196,7 +196,8 @@ class QueryHandler(object):
         self._update_time_taken()
 
         def get_tuple_item_id_score(scores):
-            return [(self.index_to_item_id[i], scores[i]) for i in self.ordered_indexes]
+            # index_to_item_id[i] is numpy int, for serialization we need to convert to int
+            return [(int(self.index_to_item_id[i]), float(scores[i])) for i in self.ordered_indexes]
             #return ((self.index_to_item_id[i], scores[i]) for i in self.ordered_indexes)
 
         return ResultSet(

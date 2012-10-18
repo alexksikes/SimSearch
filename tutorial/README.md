@@ -1,9 +1,9 @@
 In this tutorial, we will show how to use SimSearch to find similar movies. The dataset is taken from a scrape of the top 400 movies found on IMDb. We assume the current working directory to be the "tutorial" directory. All the code samples can be found in the file "./test.py".
 
-Loading the Data in the Database
---------------------------------
+Loading the Data
+----------------
 
-First thing we need is some data. The dataset in this example is the same as featured in the [fSphinx tutorial][0]. If you don't already have it, create a MySQL database called "fsphinx" with user and password "fsphinx".
+First thing we need is some data. We will be using the same dataset as the one in the [fSphinx tutorial][0]. If you don't already have the data, create a MySQL database called "fsphinx" with user and password "fsphinx".
 
 In a MySQL shell type:
 
@@ -49,9 +49,9 @@ Now let's create an index and add some keywords of interest:
     index.add(107048, 'weather forecasting')
     index.close()
 
-SimSearch has created 4 files called .xco, .yxo, .ids and .fts in ./data/sim-index/. The files .xco and .yco are the x and y coordinates of the binary matrix. This matrix represents the presence of a feature for a given item id. The file .ids keep track of the item ids with respect to their index in this matrix. The .fts keep track of the feature values. The line number of the file is the actual matrix index.
+SimSearch has created 4 files called .xco, .yxo, .ids and .fts in ./data/sim-index/. The files .xco and .yco are the x and y coordinates of the binary matrix. This matrix represents the presence of a feature for a given item. The file .ids keeps track of all the item ids with respect to their index in this matrix. Similarly the file .fts keeps track of the feature values. The line number of the file is the actual matrix index.
 
-If we'd like to build a larger index from a database, we would use an indexer. Let's build an index of all the plot keywords found on IMDb for this database.
+If we'd like to build a larger index from a database, we would use the indexer. Let's build an index with features from all the plot keywords found on this sample IMDb dataset.
 
     # let's create our index
     index = simsearch.FileIndex('./data/sim-index', mode='write')
@@ -77,7 +77,7 @@ If we'd like to build a larger index from a database, we would use an indexer. L
     2012-10-03 11:34:12,895 - INFO - Number of features: 13607
     2012-10-03 11:34:12,895 - INFO - 1.29 sec.
 
-It is important to note that the bag of words iterator is just an example. The indexer can take any iterator as long as the couple (item\_id, feature\_value) is returned. The id must always be an integer and the feature_value is a unique string representation of that feature value. However please note that you do not need to use these tools. In fact if you can directly create the matrix in .xco and .yco format, SimSearch can read it and perform its magic. For example the matrix could represent user's preferences. In this case the matrix would be the coordinates (item\_id, user\_id) indicating that user_id liked item_id. In this case the items are thought to be similar if they share a set of users liking them (the "you may also like" Amazon feature ...).
+It is important to note that the bag of words iterator is just an example. The indexer can take any iterator which returns the couple (item\_id, feature\_value) for a given item. The id must be an integer and the feature_value must be a unique string representation of the feature value. However please note that you can also directly create the matrix in .xco and .yco format and then have SimSearch read it. In fact SimSearch does not care as to how the features are extracted. All that SimSearch does is the actual matching of items with respect to these features. For example the matrix could be representing user preferences. In this case the coordinates (item\_id, user\_id) would indicate that user_id has liked item_id. The items are then thought to be similar if they share a set of users liking them (the "you may also like" Amazon feature ...).
 
 Querying the Index
 ------------------
@@ -126,7 +126,7 @@ SimSearch does not have a storage engine. Instead we have to query our database 
     |   55031 | Judgment at Nuremberg        |
     +---------+------------------------------+
 
-Ok obvisouly it matched itself, but why did "Prison Break" and "In the Name of the Father" matched?
+OK obviously it matched itself, but why did "Prison Break" and "In the Name of the Father" matched?
 
     # let's get detailed scores for the movie id 455275 and 107207
     scores = handler.get_detailed_scores([455275, 107207], max_terms=5)
@@ -147,14 +147,14 @@ Ok obvisouly it matched itself, but why did "Prison Break" and "In the Name of t
 
 Of course things would be much more interesting if we could index all movies in IMDb and consider other feature types such as directors or actors or preference data.
 
-Note that the query handler is not thread safe. It is mearly meant to be used once and thrown away after each new query. However the computed index is and should be loaded somewhere in memory so it can be reused for subsequent queries. Also note that SimSearch is not limited to single item queries, you can just as quickly perform multiple item queries. Care to know what the movies "Lilo & Stitch" and "Up" [have in common][1]?
+Note that the query handler is not thread safe. It is merely meant to be used once and thrown away after each new query. However the computed index is and should be loaded somewhere in memory so it can be reused for subsequent queries. Also note that SimSearch is not limited to single item queries, you can just as quickly perform multiple item queries. Care to know what the movies "Lilo & Stitch" and "Up" [have in common][1]?
 
-Although this is a toy example, SimSearch has been shown to perform quite well on millions of documents each having hundreds of thousands of possible feature values. There are also future plans to implement distributed search as well as real time indexing.
+Although this is a toy example, SimSearch has been shown to perform quite well on millions of documents each having hundreds of thousands of possible feature values. There are also plans to implement distributed search and real time indexing.
 
-Combining Full Text Search with Similarity Search
--------------------------------------------------
+Combining Full Text Search
+--------------------------
 
-Ok this is rather interesting, however sometimes we'd like to combine full text with item based search. For example we'd like to search for specific keywords and order these results based on how similar they are to a given set of items. This is accomplished by using the simsphinx module. The full text search query is handled by [Sphinx][2] so a little bit of setting up is necessary first.
+OK this is rather interesting, however sometimes we'd like to combine full text with item based search. For example we'd like to search for specific keywords and order these results based on how similar they are to a given set of items. This is accomplished by using the simsphinx module. The full text search query is handled by [Sphinx][2] so a little bit of setting up is necessary.
 
 First you need to install [Sphinx][2] and [fSphinx][3].
 
@@ -182,10 +182,10 @@ We are now ready to combine full text search with item based search.
     # creating a sphinx client to handle full text search
     cl = simsearch.SimClient(fsphinx.FSphinxClient(), handler, max_terms=5)
 
-A SimClient wraps any SphinxClient to provide it with similarity search ability.
+A SimClient wraps a SphinxClient to provide it with similarity search ability.
 
-    # assuming searchd is running on 9315
-    cl.SetServer('localhost', 9315)
+    # assuming searchd is running on 10001
+    cl.SetServer('localhost', 10001)
 
     # telling fsphinx how to fetch the results
     db = fsphinx.utils.database(dbn='mysql', **db_params)
@@ -206,7 +206,7 @@ A SimClient wraps any SphinxClient to provide it with similarity search ability.
     # searching for all animation movies re-ranked by similarity to "The Shawshank Redemption"
     results = cl.Query('@genres animation @similar 111161')
 
-On seeing the query term "@similar 111161", the client performs a similarity search and then sets the log_score_attr accordingly. Let's have a look at these results:
+On seeing the query term "@similar 111161", the client performed a similarity search and then set the log_score_attr accordingly. Let's have a look at these results:
 
     # looking at the results with similarity search
     print results
@@ -228,7 +228,7 @@ On seeing the query term "@similar 111161", the client performs a similarity sea
             id=198781
             title=Monsters, Inc.
 
-Again note that a SimClient is not thread safe. It is mearly meant to be used once or sequentially after each each request. In a web application you will need to create a new client for each new request. You can use SimClient.Clone on each new request for this purpose or you can create a new client from a config file with SimClient.FromConfig.
+Again note that a SimClient is not thread safe. It is merely meant to be used once or sequentially after each each request. In a web application you will need to create a new client for each new request. You can use SimClient.Clone on each new request for this purpose or you can create a new client from a config file with SimClient.FromConfig.
 
 That's pretty much it. I hope you'll enjoy using SimSearch and please don't forget to leave [feedback][5].
 

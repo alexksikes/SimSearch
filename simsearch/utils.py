@@ -17,12 +17,12 @@ logger = get_basic_logger()
 
 
 def show_time_taken(func):
-    def new(*args, **kw):
+    def new(self, *args, **kw):
         start = time.time()
-        res = func(*args, **kw)
+        res = func(self, *args, **kw)
         timed = time.time() - start
-        setattr(new, 'time_taken', timed)
         logger.info('%.2f sec.', timed)
+        setattr(self, '_time_taken_'+func.__name__, timed)
         return res
     return new
 
@@ -133,8 +133,8 @@ class _O(dict):
 def parse_config_file(path, **opts):
     cf = {}
     execfile(path, cf, cf)
-    cf.update(**opts)
-    return _O(cf)
+    opts.update(**cf)
+    return _O(opts)
 
 
 def argsort_best(arr, best_k, reverse=False):

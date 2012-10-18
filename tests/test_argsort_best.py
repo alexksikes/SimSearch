@@ -1,15 +1,27 @@
 import numpy as np
 import sys
+import time
 
 from simsearch import utils
 
 
-@utils.show_time_taken
+def show_time_taken(func):
+    def new(*args, **kw):
+        start = time.time()
+        res = func(*args, **kw)
+        timed = time.time() - start
+        utils.logger.info('%.2f sec.', timed)
+        setattr(new, 'time_taken', timed)
+        return res
+    return new
+
+
+@show_time_taken
 def argsort(arr):
     arr.argsort(0)
 
 
-@utils.show_time_taken
+@show_time_taken
 def argsort_best(arr, best_k, reverse=False):
     return utils.argsort_best(arr, best_k, reverse)
     
