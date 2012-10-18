@@ -4,7 +4,7 @@ For example, for the query with the two animated movies, ["Lilo & Stitch" and "U
 
 This module also adds the novel ability to combine full text queries with items. For example a query can be a combination of items and full text search keywords. In this case the results match the keywords and are re-ranked by similary to the queried items.
 
-It is important to note that Bayesian Sets does not care about the actual [feature][3] engineering. For example SimSearch implements a simple [bag of words][4] model. However other feature types are possible as long as they can be binarized. In this case you will need to create the index directly. The index is a set of files in a .xco and .yco format (more in the [tutorial][6]) that represents the presence of a feature value in a given item. So as long as you can create these files, SimSearch can read them and perform the matching.
+It is important to note that Bayesian Sets does not care about the actual [feature][3] engineering. In fact SimSearch only implements a simple [bag of words][4] model. However other feature types are possible as long as they can be binarized. The index is a set of files in a .xco and .yco format (more in the [tutorial][6]) that represents the presence of a feature value in a given item. So as long as you can create these files, SimSearch can read them and perform the matching.
 
 SimSearch has been [tested][5] on datasets with millions of documents and hundreds of thousands of features. Future plans include distributed search and real time indexing. For more information, feel free please to follow the [tutorial][6].
 
