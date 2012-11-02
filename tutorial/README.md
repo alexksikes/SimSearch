@@ -147,7 +147,7 @@ OK obviously it matched itself, but why did "Prison Break" and "In the Name of t
 
 Of course things would be much more interesting if we could index all movies in IMDb and consider other feature types such as directors or actors or preference data.
 
-Note that the query handler is not thread safe. It is merely meant to be used once and thrown away after each new query. However the computed index is and should be loaded somewhere in memory so it can be reused for subsequent queries. Also note that SimSearch is not limited to single item queries, you can just as quickly perform multiple item queries. Care to know what the movies "Lilo & Stitch" and "Up" [have in common][1]?
+Note that the query handler is not thread safe. It is merely meant to be used once and thrown away after each new query. However the computed index is and should be loaded somewhere in memory so it can be reused for subsequent queries. Also note that SimSearch is not limited to single item queries, you can just as quickly perform multiple item queries.
 
 Although this is a toy example, SimSearch has been shown to perform quite well on millions of documents each having hundreds of thousands of possible feature values. There are also plans to implement distributed search and real time indexing.
 
@@ -233,7 +233,7 @@ Again note that a SimClient is not thread safe. It is merely meant to be used on
 That's pretty much it. I hope you'll enjoy using SimSearch and please don't forget to leave [feedback][5].
 
 [0]: https://github.com/alexksikes/fSphinx/blob/master/tutorial/
-[1]: http://imdb.cloudmining.net/search?q=%28%40similar+1049413+url--c2%2Fc29a902a5426d4917c0ca2d72a769e5b--title--Up%29++%28%40similar+198781+url--0b%2F0b994b7d73e0ccfd928bd1dfb2d02ce3--title--Monsters%2C+Inc.%29
+[1]: http://imdb.cloudmining.net/search?q=%28%40similar+1049413+url--c2%2Fc29a902a5426d4917c0ca2d72a769e5b--title--Up%29+%28%40similar+275847+url--68%2F687625df8d1f6bed4f0c1c50b9cc281d--title--Lilo+%26+Stitch%29
 [2]: http://sphinxsearch.com
 [3]: https://github.com/alexksikes/fSphinx
 [4]: http://en.wikipedia.org/wiki/Sparse_matrix#Compressed_sparse_row_.28CSR_or_CRS.29
