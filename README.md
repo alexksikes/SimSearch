@@ -9,7 +9,7 @@ It is important to note that Bayesian Sets does not care about the actual [featu
 SimSearch has been [tested][5] on datasets with millions of documents and hundreds of thousands of features. Future plans include distributed search and real time indexing. For more information, feel free please to follow the [tutorial][6].
 
 [0]: http://www.gatsby.ucl.ac.uk/~heller/bsets.pdf
-[1]: http://imdb.cloudmining.net/search?q=%28%40similar+1049413+url--c2%2Fc29a902a5426d4917c0ca2d72a769e5b--title--Up%29+%28%40similar+275847+url--68%2F687625df8d1f6bed4f0c1c50b9cc281d--title--Lilo+%26+Stitch%29
+[1]: http://imdb.cloudmining.net/search/similar=275847--Lilo+&+Stitch|1049413--Up/
 [2]: http://thenoisychannel.com/2010/04/04/guest-post-information-retrieval-using-a-bayesian-model-of-learning-and-generalization/
 [3]: http://en.wikipedia.org/wiki/Feature_(machine_learning)
 [4]: http://en.wikipedia.org/wiki/Bag_of_words
