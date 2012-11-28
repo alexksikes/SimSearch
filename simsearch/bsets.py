@@ -51,12 +51,14 @@ class ComputedIndex(utils.Serializable):
             
     @utils.show_time_taken
     def _compute_hyper_parameters(self, c=2):
-        logger.info("Computing hyper parameters ...")
+        logger.info("Computing hyper parameters with c = %s ..." % c)
         self.mean = self.X.mean(0)
+        
         self.alpha = c * self.mean
         self.beta = c * (1 - self.mean)
         self.alpha_plus_beta = self.alpha + self.beta
         self.log_alpha_plus_beta = scipy.log(self.alpha_plus_beta)
+        
         self.log_alpha = scipy.log(self.alpha)
         self.log_beta = scipy.log(self.beta)
         
@@ -125,14 +127,14 @@ class QueryHandler(object):
         log_alpha_bar = scipy.log(alpha_bar)
         log_beta_bar = scipy.log(beta_bar)
 
-        self.c = (self.alpha_plus_beta - scipy.log(self.alpha_plus_beta + N)
+        self.c = (self.log_alpha_plus_beta - scipy.log(self.alpha_plus_beta + N)
             + log_beta_bar - self.log_beta).sum()
         self.q = log_alpha_bar - self.log_alpha - log_beta_bar + self.log_beta
 
     @utils.show_time_taken
     def _compute_scores(self):
         scores = self.X * self.q.transpose()
-        scores = scipy.asarray(scores).flatten()
+        scores = scores.flatten()
         self.log_scores = self.c + scores
 
     @utils.show_time_taken
@@ -140,7 +142,7 @@ class QueryHandler(object):
         if max_results == -1:
             self.ordered_indexes = xrange(len(self.log_scores))
         else:
-            self.ordered_indexes = utils.argsort_best(self.log_scores, max_results, reverse=True)
+            self.ordered_indexes = utils.arg_nlargest(self.log_scores, max_results)
             logger.info('Got %s indexes ...', len(self.ordered_indexes))
 
     @utils.show_time_taken
@@ -162,20 +164,22 @@ class QueryHandler(object):
         scores = []
         for id in item_ids:
             if id not in self.item_id_to_index:
-                scores.append(utils._O(total_score=0, scores=[]))
+                scores.append((0, []))
                 continue
-
+            
             xi = self.X[self.item_id_to_index[id]]
             xi_ind = xi.indices
             
             feat = (self.index_to_feat[i] for i in xi_ind)
             
             qi = self.q.transpose()[xi_ind]
-            qi = scipy.asarray(qi).flatten()
-
-            sc = sorted(zip(feat, qi), key=lambda x: (x[1], x[0]), reverse=True)
-            total_score = qi.sum()
-            scores.append(utils._O(total_score=total_score, scores=sc[0:max_terms]))
+            qi = qi.flatten()
+            
+            log_score = self.c + qi.sum()
+            sc = qi + (self.c / len(qi))
+            sc = sorted(zip(feat, sc), key=lambda x: (x[1], x[0]), reverse=True)
+            
+            scores.append((log_score, sc[0:max_terms]))
 
         return scores
 

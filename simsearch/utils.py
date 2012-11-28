@@ -137,9 +137,9 @@ def parse_config_file(path, **opts):
     return _O(opts)
 
 
-def argsort_best(arr, best_k, reverse=False):
-    """Fast computation of the best k elements in an array using a simple randomized
-    algorithm.
+def arg_nlargest(arr, n):
+    """Fast computation of the largest k elements in an array using a simple randomized
+    algorithm. The indices of these elements are returned in order.
     """
     def get_best_threshold(arr, threshold=0, sample_size=1000):
         if len(arr) >= sample_size:
@@ -149,7 +149,7 @@ def argsort_best(arr, best_k, reverse=False):
             new_threshold = arr.mean()
 
         new_arr = arr[(arr >= new_threshold).nonzero()[0]]
-        if len(new_arr) <= best_k:
+        if len(new_arr) <= n:
             return threshold
         if new_threshold == threshold:
             return threshold
@@ -160,9 +160,9 @@ def argsort_best(arr, best_k, reverse=False):
     best_indexes = (arr >= threshold).nonzero()[0]
 
     if (arr[best_indexes] == threshold).all():
-        best_indexes = best_indexes[:best_k]
+        best_indexes = best_indexes[:n]
 
-    return scipy.array(sorted(best_indexes, key=lambda i: arr[i], reverse=reverse))[:best_k]
+    return scipy.array(sorted(best_indexes, key=lambda i: arr[i], reverse=True))[:n]
 
 
 def get_all_sub_dirs(path):

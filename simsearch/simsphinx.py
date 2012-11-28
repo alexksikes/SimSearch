@@ -166,8 +166,8 @@ class SimClient(object):
         """
         return FSphinxClient.FromConfig(path)
 
-        
-class QueryTermSimilar(QueryTerm):
+
+class QuerySimilar(MultiFieldQuery):
     """This is like an fSphinx multi-field query but with the representation of
     a query for similar items.
 
@@ -179,6 +179,24 @@ class QueryTermSimilar(QueryTerm):
     is passed along.
 
     (@author alex ksikes) (@similar 1234--"Machine Learning")
+    """
+    @queries.ChangeQueryTerm
+    def AddQueryTerm(self, query_term):
+        if query_term.user_field == 'similar':
+            query_term = QueryTermSimilar(query_term.status, query_term.term)
+        MultiFieldQuery.AddQueryTerm(self, query_term)
+
+    def GetItemIds(self):
+        """Returns the item ids of this query term.
+        """
+        return map(int, (qt.item_id for qt in self if qt.user_field == 'similar'
+            and qt.status in ('', '+')))
+
+        
+class QueryTermSimilar(QueryTerm):
+    """Used internally by a query term similar query.
+
+    These query terms may be created from a match object or its string representation.
     """
     p_item_id = re.compile('\s*(\d+)(?:--)?')
     p_extra = re.compile('--(.+?)(?=--|$)', re.I|re.U)
@@ -209,21 +227,3 @@ class QueryTermSimilar(QueryTerm):
 
     def __hash__(self):
         return hash((self.user_field, self.item_id))
-
-
-class QuerySimilar(MultiFieldQuery):
-    """Used internally by a query term similar query.
-
-    These query terms may be created from a match object or its string representation.
-    """
-    @queries.ChangeQueryTerm
-    def AddQueryTerm(self, query_term):
-        if query_term.user_field == 'similar':
-            query_term = QueryTermSimilar(query_term.status, query_term.term)
-        MultiFieldQuery.AddQueryTerm(self, query_term)
-
-    def GetItemIds(self):
-        """Returns the item ids of this query term.
-        """
-        return map(int, (qt.item_id for qt in self if qt.user_field == 'similar'
-            and qt.status in ('', '+')))
