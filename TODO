@@ -22,7 +22,3 @@
 
 [ ] to speed things, we could actually only perform the matrix multiplication on the reamining ids
   (either by looping over each item or by manipulating the matrix)
-  
-[ ] handle negative examples
-
-[ ] more feature types such as texture histogram in module features.py
