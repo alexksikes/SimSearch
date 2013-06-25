@@ -166,12 +166,12 @@ And now let searchd serve the index:
 
     /usr/local/sphinx/bin/searchd -c ./config/sphinx_indexer.conf
  
-Note that the "sphinx_indexer.conf" must have an attribute called "log_scores_attr" set to 1 and declared as a float.
+Note that the "sphinx_indexer.conf" must have an attribute called "log_score_attr" set to 0 and declared as a float.
 
-    # log_score_attr must be set to 1
+    # log_score_attr must be set to 0
     sql_query            = \
         select *,\
-            1 as log_score_attr,\
+            0 as log_score_attr,\
         from table
     
     # log_score_attr will hold the scores of the matching items
